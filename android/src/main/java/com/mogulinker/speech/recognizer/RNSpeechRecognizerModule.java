@@ -1,8 +1,12 @@
 
 package com.mogulinker.speech.recognizer;
 
+import android.Manifest;
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.PermissionChecker;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -36,7 +40,8 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
     private Toast mToast;
 
     private boolean cyclic = false;// 音频流识别是否循环调用
-    private String AppId = "5c10de16";
+    private String AppId = "5d3e69b7";
+    private String result = "";
 
     public RNSpeechRecognizerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -91,7 +96,7 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
         // mIat.setParameter(SpeechConstant.VAD_EOS, "1000");
 
         // 设置标点符号,设置为"0"返回结果无标点,设置为"1"返回结果有标点
-        mIat.setParameter(SpeechConstant.ASR_PTT, "0");
+        mIat.setParameter(SpeechConstant.ASR_PTT, "1");
 
         // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
         mIat.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
@@ -113,11 +118,22 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void start() {
         try {
+            /** add by david 2019-6-13 start  */
+            //添加权限判断
+            String[] perms = {Manifest.permission.RECORD_AUDIO};
+            int permission_result = PermissionChecker.checkPermission(getCurrentActivity(), perms[0], android.os.Process.myPid(), android.os.Process.myUid(), getCurrentActivity().getPackageName());
+            if (permission_result != PermissionChecker.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions((Activity) getCurrentActivity(), perms, 100);
+                return;
+            }
+            /** add by david 2019-6-13 end  */
+
             init(AppId);
             // 设置参数
             setParam();
             mIat.startListening(mRecognizerListener);
         } catch (Exception e) {
+            Log.d("aaa", e.toString());
         }
     }
 
@@ -137,10 +153,13 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
         String text = JsonParser.parseIatResult(results.getResultString());
 
         String sn = null;
+        boolean isLast = false;
         // 读取json结果中的sn字段
         try {
             JSONObject resultJson = new JSONObject(results.getResultString());
             sn = resultJson.optString("sn");
+            isLast = resultJson.optBoolean("ls");
+            result = result + text;
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -149,7 +168,14 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
 
         WritableMap params = Arguments.createMap();
         params.putString("text", text);
+        params.putBoolean("isLast", isLast);
+        params.putString("result", result);
+
         this.onJSEvent(getReactApplicationContext(), "onRecognizerResult", params);
+
+        if (isLast) {
+            result = "";
+        }
 
         // mIatResults.put(sn, text);
         //
@@ -186,7 +212,7 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
             // if (mTranslateEnable && error.getErrorCode() == 14002) {
             // showTip(error.getPlainDescription(true) + "\n请确认是否已开通翻译功能");
             // } else {
-            showTip(error.getPlainDescription(true));
+            showTip(error.getPlainDescription(false));
             // }
         }
 
