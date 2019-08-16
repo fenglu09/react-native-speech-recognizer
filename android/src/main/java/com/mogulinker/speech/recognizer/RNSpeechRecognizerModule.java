@@ -40,15 +40,15 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
     private Toast mToast;
 
     private boolean cyclic = false;// 音频流识别是否循环调用
-    private String AppId = "5d3e69b7";
     private String result = "";
+    private String AppId = "";
 
     public RNSpeechRecognizerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
     }
 
-    public void init(String AppId) {
+    public void init_AppId(String AppId) {
         if (mIat != null) {
             return;
         }
@@ -116,6 +116,11 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void init(String AppId) {
+        this.AppId = AppId;
+    }
+
+    @ReactMethod
     public void start() {
         try {
             /** add by david 2019-6-13 start  */
@@ -128,7 +133,7 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
             }
             /** add by david 2019-6-13 end  */
 
-            init(AppId);
+            init_AppId(AppId);
             // 设置参数
             setParam();
             mIat.startListening(mRecognizerListener);
