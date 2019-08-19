@@ -30,8 +30,6 @@
 #import "IFlySpeechUtility.h"
 #import "IFlyUserWords.h"
 #import "IFlyPcmRecorder.h"
-#import "IFlyVoiceWakeuper.h"
-#import "IFlyVoiceWakeuperDelegate.h"
 
 
 
