@@ -3,6 +3,8 @@ package com.mogulinker.speech.recognizer;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
@@ -93,7 +95,7 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
         mIat.setParameter(SpeechConstant.VAD_BOS, "9000");
 
         // 设置语音后端点:后端点静音检测时间，即用户停止说话多长时间内即认为不再输入， 自动停止录音
-        // mIat.setParameter(SpeechConstant.VAD_EOS, "1000");
+        mIat.setParameter(SpeechConstant.VAD_EOS, "9000");
 
         // 设置标点符号,设置为"0"返回结果无标点,设置为"1"返回结果有标点
         mIat.setParameter(SpeechConstant.ASR_PTT, "1");
@@ -127,6 +129,22 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
             //添加权限判断
             String[] perms = {Manifest.permission.RECORD_AUDIO};
             int permission_result = PermissionChecker.checkPermission(getCurrentActivity(), perms[0], android.os.Process.myPid(), android.os.Process.myUid(), getCurrentActivity().getPackageName());
+            boolean isTip = ActivityCompat.shouldShowRequestPermissionRationale(getCurrentActivity(), perms[0]);
+            /** add by david 不再提醒后处理  start */
+            SharedPreferences sharedPreferences = getCurrentActivity().getSharedPreferences("PermissionsResult", Context.MODE_PRIVATE);
+            int mPermissionsResult = sharedPreferences.getInt(Manifest.permission.RECORD_AUDIO, -2);
+
+            if (isTip == false && permission_result != PermissionChecker.PERMISSION_GRANTED && mPermissionsResult == -1) {
+                WritableMap params = Arguments.createMap();
+                params.putString("text", "");
+                params.putBoolean("isLast", true);
+                params.putString("errorMsg", "permission_error");
+                params.putString("result", "");
+                this.onJSEvent(getReactApplicationContext(), "onRecognizerResult", params);
+                return;
+            }
+            /** add by david 不再提醒后处理  end */
+
             if (permission_result != PermissionChecker.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions((Activity) getCurrentActivity(), perms, 100);
                 return;
@@ -210,21 +228,34 @@ public class RNSpeechRecognizerModule extends ReactContextBaseJavaModule {
 
         @Override
         public void onError(SpeechError error) {
-            Log.d("aaa", error.toString());
-
-            // Tips：
-            // 错误码：10118(您没有说话)，可能是录音机权限被禁，需要提示用户打开应用的录音权限。
-            // if (mTranslateEnable && error.getErrorCode() == 14002) {
-            // showTip(error.getPlainDescription(true) + "\n请确认是否已开通翻译功能");
-            // } else {
+//            showTip(error.getPlainDescription(false));
+            /** add by david  at 2019-8-28 start */
+            // 结束说话
             showTip(error.getPlainDescription(false));
-            // }
+            if (error.getErrorCode() == 10118) {
+                WritableMap params = Arguments.createMap();
+                params.putString("text", "");
+                params.putBoolean("isLast", true);
+                params.putString("result", "");
+                onJSEvent(getReactApplicationContext(), "onRecognizerResult", params);
+            }
+            /** add by david  at 2019-8-28 end */
+
         }
 
         @Override
         public void onEndOfSpeech() {
             // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
-            // showTip("结束说话");
+//            showTip("结束说话");
+            /** add by david  at 2019-8-28 start */
+            // 结束说话
+            WritableMap params = Arguments.createMap();
+            params.putString("text", "");
+            params.putBoolean("isLast", true);
+            params.putString("result", "");
+            onJSEvent(getReactApplicationContext(), "onRecognizerResult", params);
+            /** add by david  at 2019-8-28 end */
+
         }
 
         @Override
